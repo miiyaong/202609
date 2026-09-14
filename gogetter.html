@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>GoGetter - 육지와 바다 : 미로게임 튜토리얼</title>
+<style>
+  :root{
+    --frame-blue:#1c4fa1;
+    --frame-blue-dark:#123a7a;
+    --land-green:#8cc63f;
+    --land-green-dark:#6fa62f;
+    --road-yellow:#ffd23f;
+    --water-blue:#5ec8e8;
+    --ink:#1a2340;
+    --cream:#fef8ec;
+    --panel:#ffffff;
+    --success:#3bb273;
+    --warn:#ff9f43;
+    --shadow: 0 8px 24px rgba(18,58,122,0.25);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    overflow:hidden; overscroll-behavior:none;
+    font-family:'Gaegu','Nanum Gothic','Segoe UI',sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    touch-action:none;
+  }
+  #app{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    height:100dvh; width:100vw;
+  }
+
+  /* ---------- TOP TABS ---------- */
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: min(1.2vh,10px) min(2vw,16px);
+    background:var(--frame-blue);
+    color:white; flex:0 0 auto;
+    z-index:50;
+  }
+  #topbar .logo{
+    font-weight:800; font-size:clamp(14px, 2.2vh, 20px);
+    letter-spacing:0.5px;
+  }
+  #tabs{ display:flex; gap:6px; }
+  .tab-btn{
+    border:none; border-radius:999px; padding:0.5em 1.1em;
+    font-size:clamp(12px,1.7vh,15px); font-weight:700; cursor:pointer;
+    background:rgba(255,255,255,0.18); color:white;
+    transition:background .2s, transform .15s;
+    font-family:inherit;
+  }
+  .tab-btn.active{ background:white; color:var(--frame-blue); }
+  .tab-btn:active{ transform:scale(0.95); }
+
+  /* ---------- VIEWS ---------- */
+  .view{
+    flex:1 1 auto; min-height:0; position:relative;
+    display:none;
+  }
+  .view.active{ display:flex; flex-direction:column; }
+
+  /* =========================================================
+     TUTORIAL VIEW
+  ========================================================= */
+  #tutorial-view{ background:linear-gradient(180deg,#eaf6ff,var(--cream)); }
+  #tut-dots{
+    display:flex; justify-content:center; gap:7px;
+    padding:min(1.2vh,10px) 0; flex:0 0 auto;
+  }
+  #tut-dots span{
+    width:8px; height:8px; border-radius:50%;
+    background:#c9d6ec; transition:all .25s;
+  }
+  #tut-dots span.on{ background:var(--frame-blue); width:22px; border-radius:5px; }
+
+  #tut-skip{
+    position:absolute; top:min(1.5vh,12px); right:min(2vw,16px);
+    z-index:20; border:none; background:rgba(28,79,161,0.1);
+    color:var(--frame-blue); font-weight:700; font-family:inherit;
+    padding:0.4em 0.9em; border-radius:999px; font-size:clamp(11px,1.5vh,14px);
+    cursor:pointer;
+  }
+
+  #tut-track{
+    flex:1 1 auto; min-height:0; position:relative;
+    display:flex; width:700%; height:100%;
+    transition:transform .38s cubic-bezier(.5,0,.2,1);
+  }
+  .tut-step{
+    width:calc(100%/7); height:100%; flex:0 0 auto;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 1vh 4vw 1vh;
+    text-align:center; gap:1.2vh;
+    overflow:hidden;
+  }
+  .tut-step h2{
+    font-size:clamp(18px, 3.4vh, 30px); margin:0; color:var(--frame-blue-dark);
+  }
+  .tut-step p{
+    font-size:clamp(13px, 2vh, 17px); margin:0; max-width:60ch; line-height:1.5;
+    color:#33415c;
+  }
+  .tut-emoji-row{ font-size:clamp(28px,6vh,54px); display:flex; gap:0.3em; }
+  .tut-badge{
+    background:white; border-radius:16px; padding:0.6em 1em;
+    box-shadow:var(--shadow); font-size:clamp(12px,1.8vh,15px);
+    font-weight:700; color:var(--frame-blue);
+  }
+
+  #tut-arrows{
+    position:absolute; top:50%; transform:translateY(-50%);
+    left:0; right:0; display:flex; justify-content:space-between;
+    padding:0 min(1.5vw,10px); pointer-events:none; z-index:15;
+  }
+  .tut-arrow-btn{
+    pointer-events:auto;
+    width:clamp(34px,5vh,46px); height:clamp(34px,5vh,46px);
+    border-radius:50%; border:none; background:rgba(28,79,161,0.85);
+    color:white; font-size:clamp(16px,2.6vh,22px); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow);
+  }
+  .tut-arrow-btn:disabled{ opacity:0.25; }
+
+  .mini-board{
+    display:grid; gap:4px; background:var(--frame-blue);
+    padding:6px; border-radius:12px; box-shadow:var(--shadow);
+    touch-action:none;
+  }
+  .mini-cell{
+    background:rgba(255,255,255,0.15); border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .mini-tray{
+    display:flex; gap:8px; margin-top:0.6vh; flex-wrap:wrap; justify-content:center;
+  }
+
+  .cta-btn{
+    border:none; border-radius:999px; cursor:pointer; font-family:inherit;
+    background:var(--road-yellow); color:var(--frame-blue-dark);
+    font-weight:800; padding:0.7em 1.8em; font-size:clamp(14px,2.2vh,18px);
+    box-shadow:0 6px 0 #d9a800; transition:transform .1s;
+  }
+  .cta-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #d9a800; }
+  .ghost-note{ font-size:clamp(11px,1.6vh,14px); color:#6b7a99; font-style:italic; }
+  .praise{
+    font-weight:800; color:var(--success); font-size:clamp(13px,2vh,17px);
+    opacity:0; transition:opacity .3s;
+  }
+  .praise.show{ opacity:1; }
+
+  /* =========================================================
+     PRACTICE VIEW
+  ========================================================= */
+  #practice-view{
+    background:var(--cream);
+    display:grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows: auto 1fr auto;
+    gap: 0.6vh 1vw;
+    padding: 0.8vh 1.2vw 0.8vh;
+    min-height:0;
+  }
+  #practice-view.active{ display:grid; }
+
+  #puzzle-card{
+    grid-column: 1/-1;
+    background:var(--panel); border-radius:16px; box-shadow:var(--shadow);
+    padding: 0.7vh 2vw; display:flex; align-items:center; justify-content:space-between;
+    gap:1vw; flex-wrap:wrap;
+  }
+  #puzzle-info{ display:flex; align-items:center; gap:0.6em; font-size:clamp(14px,2.4vh,22px); font-weight:800;}
+  #puzzle-info .arrow{ font-size:1.3em; }
+  #puzzle-info .arrow.road{ color:#e0a300; }
+  #puzzle-info .arrow.water{ color:#1a8fbf; }
+  #puzzle-meta{ font-size:clamp(11px,1.5vh,13px); color:#7a88a8; }
+  #puzzle-controls{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .icon-btn{
+    border:none; background:#eef2fb; border-radius:10px; cursor:pointer;
+    font-size:clamp(11px,1.6vh,14px); font-weight:700; padding:0.45em 0.8em;
+    color:var(--frame-blue-dark); font-family:inherit;
+  }
+  .icon-btn:active{ background:#dde6fa; }
+  .icon-btn.primary{ background:var(--frame-blue); color:white; }
+
+  #board-wrap{
+    grid-column:1; grid-row:2;
+    display:flex; align-items:center; justify-content:center;
+    min-height:0; min-width:0; position:relative;
+  }
+  #board-frame{
+    position:relative; background:var(--frame-blue);
+    border-radius:18px; padding: 8%;
+    box-shadow:var(--shadow);
+    aspect-ratio:1/1;
+    height:min(100%, 62vw);
+    max-height:100%;
+    display:flex;
+  }
+  #board-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+    gap:3%; width:100%; height:100%;
+  }
+  .cell{
+    position:relative; background:rgba(255,255,255,0.12); border-radius:10%;
+    display:flex; align-items:center; justify-content:center;
+    overflow:visible;
+  }
+  .cell.empty::after{
+    content:''; position:absolute; inset:12%; border:3px dashed rgba(255,255,255,0.35);
+    border-radius:8%;
+  }
+  .tile{
+    position:absolute; inset:0; border-radius:8%; cursor:pointer;
+    transition: transform .3s cubic-bezier(.5,0,.2,1);
+    touch-action:none;
+  }
+  .tile svg{ width:100%; height:100%; display:block; border-radius:8%; }
+  .tile .remove-btn{
+    position:absolute; top:-6%; right:-6%; width:22%; height:22%;
+    background:white; border-radius:50%; border:2px solid var(--frame-blue);
+    color:var(--frame-blue); font-weight:900; font-size:min(1.6vh,10px);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:5; line-height:1;
+  }
+  .tile .tag{
+    position:absolute; bottom:2%; left:2%; background:rgba(255,255,255,0.85);
+    border-radius:50%; width:16%; height:16%; min-width:14px; min-height:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:min(1.6vh,10px); font-weight:800; color:var(--frame-blue-dark);
+    z-index:4;
+  }
+  .tile.path-glow svg{ filter: drop-shadow(0 0 6px #fff59d) drop-shadow(0 0 10px #ffe27a); }
+  .tile.ghost-preview{
+    position:absolute; inset:0; pointer-events:none; opacity:0.55;
+    z-index:6;
+  }
+
+  .icon-slot{
+    position:absolute; width:clamp(24px,5.2vh,42px); height:clamp(24px,5.2vh,42px);
+    border-radius:50%; background:white; box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:center;
+    font-size:clamp(14px,3vh,24px); cursor:pointer; border:3px solid transparent;
+    transform:translate(-50%,-50%); z-index:10; transition:transform .15s, border-color .2s;
+  }
+  .icon-slot:active{ transform:translate(-50%,-50%) scale(0.9); }
+  .icon-slot.start{ border-color:var(--frame-blue); box-shadow:0 0 0 4px rgba(28,79,161,0.25), var(--shadow); }
+  .icon-slot.end{ border-color:#e0525f; box-shadow:0 0 0 4px rgba(224,82,95,0.25), var(--shadow); }
+  .icon-slot.pickable{ animation:pulse 1.2s infinite; }
+  @keyframes pulse{ 0%,100%{transform:translate(-50%,-50%) scale(1);} 50%{transform:translate(-50%,-50%) scale(1.12);} }
+
+  .hint-edge-mark{
+    position:absolute; width:26%; height:26%; border-radius:50%;
+    z-index:3; opacity:0.85; pointer-events:none;
+  }
+
+  #tray-wrap{
+    grid-column:2; grid-row:2;
+    display:flex; flex-direction:column; min-height:0;
+  }
+  #tray-title{ font-size:clamp(11px,1.6vh,14px); color:#7a88a8; font-weight:700; margin:0 0 0.3vh 0.3vw;}
+  #tray{
+    flex:1; background:var(--panel); border-radius:14px; box-shadow:var(--shadow);
+    padding:2vh 1.5vw; display:grid; grid-template-columns:repeat(3,1fr);
+    gap:2vh 1.5vw; align-content:start; overflow:hidden;
+  }
+  .tray-slot{
+    aspect-ratio:1/1; position:relative;
+    border-radius:10%; background:#eef1e5;
+  }
+  .tray-slot .tile{ cursor:grab; }
+  .tray-slot.selected .tile{ outline:3px solid var(--road-yellow); outline-offset:2px; }
+  .tray-slot .tag{
+    position:absolute; bottom:2%; left:2%; background:rgba(255,255,255,0.85);
+    border-radius:50%; width:18%; height:18%; min-width:14px; min-height:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:min(1.6vh,10px); font-weight:800; color:var(--frame-blue-dark); z-index:4;
+  }
+
+  #bottom-bar{
+    grid-column:1/-1; display:flex; gap:8px; justify-content:center; align-items:center;
+    flex-wrap:wrap; padding-top:0.2vh;
+  }
+  #status-msg{
+    font-size:clamp(12px,1.8vh,15px); font-weight:700; color:#7a88a8;
+    min-width:14ch; text-align:center;
+  }
+  #status-msg.success{ color:var(--success); }
+  #hint-panel{
+    position:fixed; left:50%; bottom:8vh; transform:translate(-50%,20px);
+    background:white; border-radius:14px; box-shadow:var(--shadow);
+    padding:1.2em 1.4em; max-width:min(84vw,420px); text-align:center;
+    font-size:clamp(12px,1.8vh,15px); z-index:80; opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s;
+  }
+  #hint-panel.show{ opacity:1; transform:translate(-50%,0); pointer-events:auto; }
+  #hint-panel .hint-stage{ font-weight:800; color:var(--frame-blue); margin-bottom:0.3em; }
+
+  #success-overlay{
+    position:fixed; inset:0; background:rgba(28,79,161,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+    opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  #success-overlay.show{ opacity:1; pointer-events:auto; }
+  #success-card{
+    background:white; border-radius:20px; padding:2em 2.4em; text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3); max-width:86vw;
+  }
+  #success-card .big{ font-size:clamp(30px,6vh,50px); }
+  #success-card h3{ margin:0.2em 0; color:var(--frame-blue-dark); font-size:clamp(18px,3vh,26px);}
+
+  select#color-toggle{
+    font-family:inherit; font-weight:700; border-radius:10px; border:none;
+    padding:0.45em 0.6em; background:#eef2fb; color:var(--frame-blue-dark);
+    font-size:clamp(11px,1.6vh,14px);
+  }
+
+  @media (max-aspect-ratio: 4/5){
+    #practice-view{
+      grid-template-columns:1fr;
+      grid-template-rows:auto minmax(0,1fr) minmax(0,26vh) auto;
+    }
+    #board-wrap{ grid-column:1; grid-row:2; }
+    #tray-wrap{ grid-column:1; grid-row:3; }
+    #board-frame{ height:min(100%, 82vh); width:auto; max-width:96vw;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="logo">🧭 GoGetter</div>
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="tutorial">튜토리얼</button>
+      <button class="tab-btn" data-tab="practice">연습하기</button>
+    </div>
+  </div>
+
+  <!-- ============ TUTORIAL VIEW ============ -->
+  <div class="view active" id="tutorial-view">
+    <button id="tut-skip">건너뛰기 ›</button>
+    <div id="tut-dots"></div>
+    <div id="tut-track">
+
+      <!-- STEP 1 -->
+      <div class="tut-step">
+        <div class="tut-emoji-row">🧭🏝️</div>
+        <h2>GoGetter - 육지와 바다</h2>
+        <p>퍼즐 타일을 놓고 돌려서, 길을 이어보는 미로게임이에요.<br>출발지에서 목적지까지 연결하면 성공!</p>
+        <div class="tut-badge">화면을 옆으로 넘기면서 배워봐요 👉</div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="tut-step">
+        <h2>보드와 타일</h2>
+        <p>보드는 3×3, 모두 9칸이에요. 퍼즐 타일도 9개예요.<br>
+          타일 위에는 <b style="color:#c98b00">노란 도로</b>와 <b style="color:#1a8fbf">파란 수로</b>가 그려져 있어요.</p>
+        <div id="step2-board" class="mini-board"></div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="tut-step">
+        <h2>타일을 놓고, 돌려보기</h2>
+        <p>아래 타일을 <b>탭해서 보드에 놓아보고</b>, 보드 위 타일은 <b>탭하면 빙글 돌아가요</b>.</p>
+        <div id="step3-board" class="mini-board"></div>
+        <div id="step3-tray" class="mini-tray"></div>
+        <div class="praise" id="step3-praise">✅ 잘했어요! 놓기와 돌리기 모두 성공!</div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="tut-step">
+        <h2>문제 카드 읽는 법</h2>
+        <p>출발 지점과 도착 지점을 <b>화살표</b>가 이어줘요.<br>화살표 색깔이 아주 중요해요!</p>
+        <div id="step4-demo" style="display:flex;align-items:center;gap:14px;font-size:clamp(24px,5vh,40px)">
+          <span>🏠</span><span id="step4-arrow" style="font-size:0.7em;transition:color .3s;">➜</span><span>🚗</span>
+        </div>
+        <p id="step4-caption" style="font-weight:800;"></p>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="tut-step">
+        <h2>길을 이어보기</h2>
+        <p>맞닿은 타일끼리 <b>같은 색</b>이어야 길이 이어져요. 타일을 돌려서 길을 완성해보세요!</p>
+        <div id="step5-board" class="mini-board"></div>
+        <div class="praise" id="step5-praise">🎉 정답이에요! 이렇게 길이 이어지는 거예요.</div>
+      </div>
+
+      <!-- STEP 6 -->
+      <div class="tut-step">
+        <h2>실전 맛보기</h2>
+        <p>진짜 문제를 살짝 미리 풀어볼까요? 타일 1~2개만 맞추면 완성이에요!</p>
+        <div id="step6-board" class="mini-board"></div>
+        <div class="praise" id="step6-praise">🏆 성공! 이제 진짜 연습을 시작해볼까요?</div>
+      </div>
+
+      <!-- STEP 7 -->
+      <div class="tut-step">
+        <div class="tut-emoji-row">🚀</div>
+        <h2>이제 진짜 문제를 풀어볼까요?</h2>
+        <p>연습 모드에서 다양한 문제를 만나보세요.<br>막히면 언제든 힌트를 눌러보세요!</p>
+        <button class="cta-btn" id="go-practice-btn">연습하러 가기 →</button>
+      </div>
+
+    </div>
+    <div id="tut-arrows">
+      <button class="tut-arrow-btn" id="tut-prev">‹</button>
+      <button class="tut-arrow-btn" id="tut-next">›</button>
+    </div>
+  </div>
+
+  <!-- ============ PRACTICE VIEW ============ -->
+  <div class="view" id="practice-view">
+    <div id="puzzle-card">
+      <div>
+        <div id="puzzle-info"></div>
+        <div id="puzzle-meta"></div>
+      </div>
+      <div id="puzzle-controls">
+        <button class="icon-btn" id="btn-make">✏️ 직접 만들기</button>
+        <button class="icon-btn" id="btn-random">🎲 무작위 문제</button>
+        <button class="icon-btn primary" id="btn-next-puzzle">다음 문제 ›</button>
+      </div>
+    </div>
+
+    <div id="board-wrap">
+      <div id="board-frame">
+        <div id="board-grid"></div>
+      </div>
+    </div>
+
+    <div id="tray-wrap">
+      <div id="tray-title">타일 보관함</div>
+      <div id="tray"></div>
+    </div>
+
+    <div id="bottom-bar">
+      <button class="icon-btn" id="btn-reset">🔄 초기화</button>
+      <button class="icon-btn" id="btn-hint">💡 힌트</button>
+      <span id="status-msg">타일을 놓아 길을 이어보세요</span>
+      <label style="font-size:clamp(11px,1.6vh,14px); font-weight:700; color:#7a88a8; display:flex; align-items:center; gap:4px;">
+        <input type="checkbox" id="chk-compare" checked style="width:14px;height:14px;"> 비교 힌트
+      </label>
+    </div>
+  </div>
+
+</div>
+
+<div id="hint-panel"><div class="hint-stage"></div><div class="hint-body"></div></div>
+
+<div id="success-overlay">
+  <div id="success-card">
+    <div class="big">🎉🏆✨</div>
+    <h3>연결 성공!</h3>
+    <p id="success-detail" style="color:#556;"></p>
+    <button class="cta-btn" id="success-next-btn">다음 문제로 →</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   0. TILE DEFINITIONS
+   edges: 'top' | 'right' | 'bottom' | 'left'
+   connections: [{color:'road'|'water', edges:[e1,e2]}, ...]
+========================================================= */
+const TILE_DEFS = {
+  T1:{ label:'A', connections:[ {color:'road',edges:['top','bottom']}, {color:'water',edges:['left','right']} ] },
+  T2:{ label:'B', connections:[ {color:'road',edges:['top','right']}, {color:'water',edges:['bottom','left']} ] },
+  T3:{ label:'C', connections:[ {color:'road',edges:['left','bottom']}, {color:'water',edges:['top','right']} ] },
+  T4:{ label:'D', connections:[ {color:'road',edges:['top','left']}, {color:'water',edges:['right','bottom']} ] },
+  T5:{ label:'E', connections:[ {color:'road',edges:['top','bottom']} ] },
+  T6:{ label:'F', connections:[ {color:'water',edges:['left','right']} ] },
+  T7:{ label:'G', connections:[ {color:'road',edges:['top','right']}, {color:'road',edges:['bottom','left']} ] },
+  T8:{ label:'H', connections:[ {color:'water',edges:['top','left']}, {color:'water',edges:['right','bottom']} ] },
+  T9:{ label:'I', connections:[ {color:'road',edges:['left','right']}, {color:'water',edges:['top','bottom']} ] },
+};
+const TILE_IDS = Object.keys(TILE_DEFS);
+
+const EDGE_ORDER = ['top','right','bottom','left'];
+function rotateEdge(edge, steps){
+  const i = EDGE_ORDER.indexOf(edge);
+  return EDGE_ORDER[(i + steps + 400) % 4];
+}
+function getEffectiveConnections(tileId, rotationDeg){
+  const steps = (rotationDeg/90) % 4;
+  return TILE_DEFS[tileId].connections.map(c=>({
+    color:c.color,
+    edges:[ rotateEdge(c.edges[0],steps), rotateEdge(c.edges[1],steps) ]
+  }));
+}
+
+const EDGE_POINT = { top:[50,2], right:[98,50], bottom:[50,98], left:[2,50] };
+function controlPoint(e1,e2){
+  const key = [e1,e2].sort().join('-');
+  const map = {
+    'bottom-top':[50,50], 'left-right':[50,50],
+    'right-top':[74,26], 'bottom-right':[74,74],
+    'bottom-left':[26,74], 'left-top':[26,26]
+  };
+  return map[key] || [50,50];
+}
+const COLOR_HEX = { road:'#ffd23f', water:'#5ec8e8' };
+
+function renderTileSVG(tileId, rotationDeg, opts){
+  opts = opts || {};
+  const conns = getEffectiveConnections(tileId, rotationDeg);
+  let paths = '';
+  conns.forEach(c=>{
+    const [x1,y1] = EDGE_POINT[c.edges[0]];
+    const [x2,y2] = EDGE_POINT[c.edges[1]];
+    const [cx,cy] = controlPoint(c.edges[0],c.edges[1]);
+    const d = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    paths += `<path d="${d}" stroke="#1a2340" stroke-width="15" fill="none" stroke-linecap="round"/>`;
+    paths += `<path d="${d}" stroke="${COLOR_HEX[c.color]}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+  });
+  const showTag = opts.showTag !== false;
+  return `<svg viewBox="0 0 100 100">
+    <rect x="1" y="1" width="98" height="98" rx="10" fill="${opts.dim ? '#cfe3ae' : 'var(--land-green,#8cc63f)'}" stroke="#5c8f22" stroke-width="2"/>
+    ${paths}
+  </svg>`;
+}
+
+/* =========================================================
+   1. ICON SLOTS  (row,col,edge attachment)
+========================================================= */
+const ICON_SLOTS = [
+  {id:'house',   emoji:'🏠', row:0, col:0, edge:'left'},
+  {id:'car',     emoji:'🚗', row:1, col:0, edge:'left'},
+  {id:'police',  emoji:'👮', row:2, col:0, edge:'left'},
+  {id:'light',   emoji:'🗼', row:0, col:2, edge:'right'},
+  {id:'boat',    emoji:'⛵', row:1, col:2, edge:'right'},
+  {id:'fish1',   emoji:'🐟', row:2, col:2, edge:'right'},
+  {id:'shark',   emoji:'🦈', row:0, col:0, edge:'top'},
+  {id:'boat2',   emoji:'🚤', row:0, col:1, edge:'top'},
+  {id:'fish2',   emoji:'🐠', row:2, col:0, edge:'bottom'},
+  {id:'house2',  emoji:'🏡', row:2, col:1, edge:'bottom'},
+  {id:'car2',    emoji:'🚙', row:2, col:2, edge:'bottom'},
+];
+function slotById(id){ return ICON_SLOTS.find(s=>s.id===id); }
+function slotPos(slot){
+  // percentage position around board-frame (0-100)
+  const cell = 100/3;
+  let top, left;
+  if(slot.edge==='left'){ left = -2; top = (slot.row+0.5)*cell; }
+  else if(slot.edge==='right'){ left = 102; top = (slot.row+0.5)*cell; }
+  else if(slot.edge==='top'){ top = -2; left = (slot.col+0.5)*cell; }
+  else { top = 102; left = (slot.col+0.5)*cell; }
+  return {top,left};
+}
+
+/* =========================================================
+   2. SOLUTION BOARD  (fixed reference layout)
+========================================================= */
+const SOLUTION_LAYOUT = [
+  ['T2','T1','T4'],
+  ['T7','T9','T3'],
+  ['T5','T8','T6']
+];
+const SOLUTION_ROT = [[0,0,0],[0,0,0],[0,0,0]];
+
+/* graph-based connectivity check on an arbitrary board */
+function nodeId(r,c,edge){ return r+'-'+c+'-'+edge; }
+function buildGraph(board, color){
+  const adj = new Map();
+  function ensure(n){ if(!adj.has(n)) adj.set(n,new Set()); return adj.get(n); }
+  function addEdge(a,b){ ensure(a).add(b); ensure(b).add(a); }
+
+  // physical adjacency between cells
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      if(c<2) addEdge(nodeId(r,c,'right'), nodeId(r,c+1,'left'));
+      if(r<2) addEdge(nodeId(r,c,'bottom'), nodeId(r+1,c,'top'));
+    }
+  }
+  // intra-tile connections (color-gated)
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      const cell = board[r][c];
+      if(!cell) continue;
+      const conns = getEffectiveConnections(cell.tileId, cell.rotation);
+      conns.forEach(cn=>{
+        if(cn.color===color){
+          addEdge(nodeId(r,c,cn.edges[0]), nodeId(r,c,cn.edges[1]));
+        }
+      });
+    }
+  }
+  // icon anchors
+  ICON_SLOTS.forEach(s=>{
+    addEdge('icon-'+s.id, nodeId(s.row,s.col,s.edge));
+  });
+  return adj;
+}
+function checkConnection(board, startId, endId, color){
+  const adj = buildGraph(board, color);
+  const startNode = 'icon-'+startId, endNode = 'icon-'+endId;
+  if(!adj.has(startNode) || !adj.has(endNode)) return {connected:false, cells:[]};
+  const visited = new Set([startNode]);
+  const prev = new Map();
+  const queue = [startNode];
+  while(queue.length){
+    const cur = queue.shift();
+    if(cur===endNode) break;
+    for(const nb of (adj.get(cur)||[])){
+      if(!visited.has(nb)){ visited.add(nb); prev.set(nb,cur); queue.push(nb); }
+    }
+  }
+  if(!visited.has(endNode)) return {connected:false, cells:[]};
+  // reconstruct path -> extract cells
+  let cur = endNode; const cells = new Set();
+  while(cur !== startNode){
+    const m = cur.match(/^(\d)-(\d)-/);
+    if(m) cells.add(m[1]+'-'+m[2]);
+    cur = prev.get(cur);
+  }
+  return {connected:true, cells:Array.from(cells)};
+}
+
+/* =========================================================
+   3. GENERATE PUZZLES from SOLUTION_LAYOUT
+========================================================= */
+function buildSolutionBoard(){
+  const b = [];
+  for(let r=0;r<3;r++){ b.push([]); for(let c=0;c<3;c++){
+    b[r].push({tileId:SOLUTION_LAYOUT[r][c], rotation:SOLUTION_ROT[r][c]});
+  }}
+  return b;
+}
+function generatePuzzles(){
+  const solBoard = buildSolutionBoard();
+  const found = [];
+  const colors = ['road','water'];
+  for(let i=0;i<ICON_SLOTS.length;i++){
+    for(let j=i+1;j<ICON_SLOTS.length;j++){
+      colors.forEach(color=>{
+        const res = checkConnection(solBoard, ICON_SLOTS[i].id, ICON_SLOTS[j].id, color);
+        if(res.connected && res.cells.length>=2){
+          found.push({ startIcon:ICON_SLOTS[i].id, endIcon:ICON_SLOTS[j].id, color, pathCells:res.cells, len:res.cells.length });
+        }
+      });
+    }
+  }
+  // dedupe by pair+color, prefer variety of length, pick a spread
+  found.sort((a,b)=>a.len-b.len);
+  const picked = [];
+  const seen = new Set();
+  const targetCount = 6;
+  const step = Math.max(1, Math.floor(found.length/targetCount));
+  for(let i=0;i<found.length && picked.length<targetCount; i+=step){
+    const f = found[i];
+    const key = f.startIcon+'|'+f.endIcon+'|'+f.color;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    picked.push(f);
+  }
+  picked.forEach(p=>{
+    p.difficulty = p.len<=2 ? 1 : (p.len<=4 ? 2 : 3);
+  });
+  return picked;
+}
+let PUZZLES = generatePuzzles();
+if(PUZZLES.length===0){
+  // fallback safety (shouldn't happen)
+  PUZZLES = [{startIcon:'house', endIcon:'car', color:'road', pathCells:['0-0'], difficulty:1}];
+}
+
+/* =========================================================
+   4. PRACTICE STATE
+========================================================= */
+const state = {
+  board: [[null,null,null],[null,null,null],[null,null,null]],
+  tray: [],
+  selectedTrayIndex: null,
+  puzzleIndex: 0,
+  puzzle: null, // {startIcon,endIcon,color,difficulty}
+  makingMode: false,
+  pendingIcons: [],
+  hintStage: 0,
+  hintUsedCount: 0,
+  solved: false,
+};
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function newRound(puzzle){
+  state.puzzle = puzzle;
+  state.board = [[null,null,null],[null,null,null],[null,null,null]];
+  state.tray = shuffle(TILE_IDS).map(id=>({tileId:id, rotation:[0,90,180,270][Math.floor(Math.random()*4)]}));
+  state.selectedTrayIndex = null;
+  state.hintStage = 0;
+  state.solved = false;
+  renderPuzzleCard();
+  renderBoard();
+  renderTray();
+  setStatus('타일을 놓아 길을 이어보세요', false);
+}
+
+function setStatus(msg, success){
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.classList.toggle('success', !!success);
+}
+
+/* ---------- rendering ---------- */
+const ICON_EMOJI = {}; ICON_SLOTS.forEach(s=>ICON_EMOJI[s.id]=s.emoji);
+
+function renderPuzzleCard(){
+  const p = state.puzzle;
+  const info = document.getElementById('puzzle-info');
+  const meta = document.getElementById('puzzle-meta');
+  const arrowClass = p.color==='road' ? 'road' : 'water';
+  const arrowGlyph = p.color==='road' ? '➜' : '➜';
+  info.innerHTML = `<span>${ICON_EMOJI[p.startIcon]}</span>
+    <span class="arrow ${arrowClass}">${arrowGlyph}</span>
+    <span>${ICON_EMOJI[p.endIcon]}</span>
+    <span style="font-size:0.55em; color:${p.color==='road'?'#c98b00':'#1a8fbf'}; margin-left:4px;">
+      ${p.color==='road' ? '(도로로 연결!)' : '(수로로 연결!)'}
+    </span>`;
+  meta.textContent = '난이도 ' + '⭐'.repeat(p.difficulty||1);
+  document.querySelectorAll('.icon-slot').forEach(el=>{
+    el.classList.toggle('start', el.dataset.id===p.startIcon);
+    el.classList.toggle('end', el.dataset.id===p.endIcon);
+  });
+}
+
+function renderBoard(){
+  const grid = document.getElementById('board-grid');
+  grid.innerHTML = '';
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      const cellDiv = document.createElement('div');
+      const cell = state.board[r][c];
+      cellDiv.className = 'cell' + (cell? '' : ' empty');
+      cellDiv.dataset.r = r; cellDiv.dataset.c = c;
+      if(cell){
+        const tileDiv = document.createElement('div');
+        tileDiv.className = 'tile';
+        tileDiv.style.transform = `rotate(${cell.rotation}deg)`;
+        tileDiv.innerHTML = renderTileSVG(cell.tileId, 0) +
+          `<div class="tag" style="transform:rotate(${-cell.rotation}deg)">${TILE_DEFS[cell.tileId].label}</div>
+           <div class="remove-btn" style="transform:rotate(${-cell.rotation}deg)">✕</div>`;
+        tileDiv.addEventListener('click', (e)=>{
+          if(e.target.classList.contains('remove-btn')){
+            e.stopPropagation();
+            removeFromBoard(r,c);
+          } else {
+            rotateBoardTile(r,c);
+          }
+        });
+        let pressTimer=null, previewEl=null;
+        tileDiv.addEventListener('pointerdown', (e)=>{
+          if(e.target.classList.contains('remove-btn')) return;
+          pressTimer = setTimeout(()=>{
+            const nextRot = (cell.rotation+90)%360;
+            previewEl = document.createElement('div');
+            previewEl.className = 'ghost-preview';
+            previewEl.style.transform = `rotate(${nextRot}deg)`;
+            previewEl.innerHTML = renderTileSVG(cell.tileId,0,{dim:true});
+            cellDiv.appendChild(previewEl);
+          }, 380);
+        });
+        function clearPreview(){ if(pressTimer) clearTimeout(pressTimer); if(previewEl && previewEl.parentNode){ previewEl.parentNode.removeChild(previewEl);} previewEl=null; }
+        tileDiv.addEventListener('pointerup', clearPreview);
+        tileDiv.addEventListener('pointerleave', clearPreview);
+        cellDiv.appendChild(tileDiv);
+      } else {
+        cellDiv.addEventListener('click', ()=> placeSelectedInto(r,c));
+      }
+      grid.appendChild(cellDiv);
+    }
+  }
+  renderIconSlots();
+  applyCompareHints();
+}
+
+function renderIconSlots(){
+  document.querySelectorAll('.icon-slot').forEach(e=>e.remove());
+  const frame = document.getElementById('board-frame');
+  ICON_SLOTS.forEach(slot=>{
+    const pos = slotPos(slot);
+    const btn = document.createElement('div');
+    btn.className = 'icon-slot';
+    btn.dataset.id = slot.id;
+    btn.style.top = pos.top+'%';
+    btn.style.left = pos.left+'%';
+    btn.textContent = slot.emoji;
+    if(state.makingMode) btn.classList.add('pickable');
+    btn.addEventListener('click', ()=> onIconClick(slot.id));
+    frame.appendChild(btn);
+  });
+  renderPuzzleCard();
+}
+
+function renderTray(){
+  const tray = document.getElementById('tray');
+  tray.innerHTML = '';
+  state.tray.forEach((item,idx)=>{
+    const slot = document.createElement('div');
+    slot.className = 'tray-slot' + (state.selectedTrayIndex===idx ? ' selected':'');
+    const tileDiv = document.createElement('div');
+    tileDiv.className = 'tile';
+    tileDiv.style.position='relative';
+    tileDiv.style.transform = `rotate(${item.rotation}deg)`;
+    tileDiv.innerHTML = renderTileSVG(item.tileId,0,{showTag:false});
+    slot.appendChild(tileDiv);
+    const tag = document.createElement('div');
+    tag.className='tag'; tag.textContent = TILE_DEFS[item.tileId].label;
+    slot.appendChild(tag);
+    slot.addEventListener('click', ()=>{
+      if(state.selectedTrayIndex===idx){ state.selectedTrayIndex=null; }
+      else { state.selectedTrayIndex = idx; }
+      renderTray();
+    });
+    tray.appendChild(slot);
+  });
+}
+
+/* ---------- interactions ---------- */
+function placeSelectedInto(r,c){
+  if(state.selectedTrayIndex===null) return;
+  const item = state.tray[state.selectedTrayIndex];
+  state.board[r][c] = {tileId:item.tileId, rotation:item.rotation};
+  state.tray.splice(state.selectedTrayIndex,1);
+  state.selectedTrayIndex = null;
+  renderBoard(); renderTray();
+  evaluateBoard();
+}
+function removeFromBoard(r,c){
+  const cell = state.board[r][c];
+  if(!cell) return;
+  state.tray.push({tileId:cell.tileId, rotation:cell.rotation});
+  state.board[r][c] = null;
+  renderBoard(); renderTray();
+  evaluateBoard();
+}
+function rotateBoardTile(r,c){
+  const cell = state.board[r][c];
+  if(!cell) return;
+  cell.rotation = (cell.rotation+90)%360;
+  renderBoard();
+  evaluateBoard();
+}
+
+function onIconClick(id){
+  if(!state.makingMode) return;
+  if(state.pendingIcons.includes(id)){
+    state.pendingIcons = state.pendingIcons.filter(x=>x!==id);
+  } else {
+    state.pendingIcons.push(id);
+    if(state.pendingIcons.length>2) state.pendingIcons.shift();
+  }
+  document.querySelectorAll('.icon-slot').forEach(el=>{
+    el.classList.toggle('start', state.pendingIcons[0]===el.dataset.id);
+    el.classList.toggle('end', state.pendingIcons[1]===el.dataset.id);
+  });
+  if(state.pendingIcons.length===2){
+    const color = document.getElementById('color-toggle') ? document.getElementById('color-toggle').value : 'road';
+    const newPuzzle = {startIcon:state.pendingIcons[0], endIcon:state.pendingIcons[1], color, difficulty:1, custom:true};
+    exitMakingMode();
+    newRound(newPuzzle);
+  }
+}
+function enterMakingMode(){
+  state.makingMode = true;
+  state.pendingIcons = [];
+  const ctrl = document.getElementById('puzzle-controls');
+  if(!document.getElementById('color-toggle')){
+    const sel = document.createElement('select');
+    sel.id='color-toggle';
+    sel.innerHTML = `<option value="road">🟡 도로로</option><option value="water">🔵 수로로</option>`;
+    ctrl.insertBefore(sel, document.getElementById('btn-next-puzzle'));
+  }
+  setStatus('테두리 아이콘 2개를 눌러 출발-도착을 정해보세요', false);
+  renderIconSlots();
+}
+function exitMakingMode(){
+  state.makingMode = false;
+  const sel = document.getElementById('color-toggle');
+  if(sel) sel.remove();
+  renderIconSlots();
+}
+
+/* ---------- evaluation ---------- */
+function evaluateBoard(){
+  document.querySelectorAll('.tile').forEach(t=>t.classList.remove('path-glow'));
+  const filled = state.board.every(row=>row.every(c=>c));
+  const res = checkConnection(state.board, state.puzzle.startIcon, state.puzzle.endIcon, state.puzzle.color);
+  if(res.connected){
+    res.cells.forEach(key=>{
+      const [r,c] = key.split('-').map(Number);
+      const cellDiv = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+      if(cellDiv){ const t = cellDiv.querySelector('.tile'); if(t) t.classList.add('path-glow'); }
+    });
+    if(!state.solved){
+      state.solved = true;
+      setStatus('연결 성공! 🎉', true);
+      showSuccess();
+    }
+  } else {
+    state.solved = false;
+    if(filled){ setStatus('조금만 더! 타일을 다시 돌려볼까요?', false); }
+    else { setStatus('아직 연결되지 않았어요', false); }
+  }
+  applyCompareHints();
+}
+
+function showSuccess(){
+  const overlay = document.getElementById('success-overlay');
+  const detail = document.getElementById('success-detail');
+  detail.textContent = (state.puzzle.color==='road' ? '노란 도로' : '파란 수로') + '로 멋지게 이었어요!';
+  overlay.classList.add('show');
+}
+document.getElementById('success-next-btn').addEventListener('click', ()=>{
+  document.getElementById('success-overlay').classList.remove('show');
+  goNextPredefinedPuzzle();
+});
+
+/* ---------- adjacent-compare hint (always-on toggle) ---------- */
+function applyCompareHints(){
+  document.querySelectorAll('.hint-edge-mark').forEach(e=>e.remove());
+  const on = document.getElementById('chk-compare').checked;
+  if(!on) return;
+  const positions = { top:['50%','8%'], right:['92%','50%'], bottom:['50%','92%'], left:['8%','50%'] };
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      if(state.board[r][c]) continue; // only empty cells
+      const cellDiv = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+      if(!cellDiv) continue;
+      const neighbors = [
+        {dr:-1,dc:0, myEdge:'top', theirEdge:'bottom'},
+        {dr:1,dc:0, myEdge:'bottom', theirEdge:'top'},
+        {dr:0,dc:-1, myEdge:'left', theirEdge:'right'},
+        {dr:0,dc:1, myEdge:'right', theirEdge:'left'},
+      ];
+      neighbors.forEach(n=>{
+        const nr=r+n.dr, nc=c+n.dc;
+        if(nr<0||nr>2||nc<0||nc>2) return;
+        const ncell = state.board[nr][nc];
+        if(!ncell) return;
+        const conns = getEffectiveConnections(ncell.tileId, ncell.rotation);
+        conns.forEach(cn=>{
+          if(cn.edges.includes(n.theirEdge)){
+            const mark = document.createElement('div');
+            mark.className='hint-edge-mark';
+            mark.style.background = COLOR_HEX[cn.color];
+            mark.style.left = positions[n.myEdge][0];
+            mark.style.top = positions[n.myEdge][1];
+            mark.style.transform = 'translate(-50%,-50%)';
+            cellDiv.appendChild(mark);
+          }
+        });
+      });
+    }
+  }
+}
+document.getElementById('chk-compare').addEventListener('change', applyCompareHints);
+
+/* ---------- staged hint button ---------- */
+function showHintPanel(stageText, bodyText){
+  const panel = document.getElementById('hint-panel');
+  panel.querySelector('.hint-stage').textContent = stageText;
+  panel.querySelector('.hint-body').textContent = bodyText;
+  panel.classList.add('show');
+  clearTimeout(panel._t);
+  panel._t = setTimeout(()=>panel.classList.remove('show'), 4200);
+}
+document.getElementById('btn-hint').addEventListener('click', ()=>{
+  if(state.puzzle.custom){
+    showHintPanel('힌트 안내', '직접 만든 문제는 힌트가 없어요. 비교 힌트(점 표시)를 참고해보세요!');
+    return;
+  }
+  const solBoard = buildSolutionBoard();
+  const target = state.puzzle.pathCells.map(k=>k.split('-').map(Number))
+    .find(([r,c])=>{
+      const cur = state.board[r][c];
+      const sol = solBoard[r][c];
+      return !cur || cur.tileId!==sol.tileId || cur.rotation!==sol.rotation;
+    });
+  if(!target){
+    showHintPanel('힌트', '지금까지는 정답 경로와 같아요! 나머지 칸도 채워보세요.');
+    return;
+  }
+  const [r,c] = target;
+  document.querySelectorAll('.cell').forEach(el=>el.style.outline='');
+  const cellDiv = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  state.hintUsedCount++;
+  state.hintStage = (state.hintStage % 3) + 1;
+  if(cellDiv){
+    cellDiv.style.outline = '3px solid #ff9f43';
+    cellDiv.style.outlineOffset = '2px';
+  }
+  const sol = solBoard[r][c];
+  if(state.hintStage===1){
+    showHintPanel('1단계 힌트', `${r+1}행 ${c+1}열 자리를 다시 살펴보세요!`);
+  } else if(state.hintStage===2){
+    showHintPanel('2단계 힌트', `이 자리에는 '${TILE_DEFS[sol.tileId].label}' 타일이 필요해요. 보관함에서 찾아보세요.`);
+  } else {
+    const cur = state.board[r][c];
+    let msg;
+    if(cur && cur.tileId===sol.tileId){
+      const diff = ((sol.rotation-cur.rotation)/90+4)%4;
+      msg = diff===0 ? '지금 방향이 맞아요!' : `오른쪽으로 ${diff}번 돌려보세요.`;
+    } else {
+      msg = `'${TILE_DEFS[sol.tileId].label}' 타일을 이 자리에 놓고, 방향을 맞춰보세요.`;
+    }
+    showHintPanel('3단계 힌트', msg);
+  }
+});
+
+/* ---------- puzzle navigation ---------- */
+function goNextPredefinedPuzzle(){
+  state.puzzleIndex = (state.puzzleIndex+1) % PUZZLES.length;
+  newRound(PUZZLES[state.puzzleIndex]);
+}
+document.getElementById('btn-next-puzzle').addEventListener('click', goNextPredefinedPuzzle);
+document.getElementById('btn-random').addEventListener('click', ()=>{
+  const p = PUZZLES[Math.floor(Math.random()*PUZZLES.length)];
+  newRound(p);
+});
+document.getElementById('btn-make').addEventListener('click', enterMakingMode);
+document.getElementById('btn-reset').addEventListener('click', ()=> newRound(state.puzzle));
+
+/* =========================================================
+   5. TAB SWITCHING
+========================================================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('tutorial-view').classList.toggle('active', tab==='tutorial');
+    document.getElementById('practice-view').classList.toggle('active', tab==='practice');
+  });
+});
+document.getElementById('go-practice-btn').addEventListener('click', ()=>{
+  document.querySelector('.tab-btn[data-tab="practice"]').click();
+});
+
+/* =========================================================
+   6. TUTORIAL LOGIC
+========================================================= */
+const TUT_STEPS = 7;
+let tutIndex = 0;
+const dotsWrap = document.getElementById('tut-dots');
+for(let i=0;i<TUT_STEPS;i++){ const d=document.createElement('span'); dotsWrap.appendChild(d); }
+function renderTutDots(){
+  Array.from(dotsWrap.children).forEach((d,i)=>d.classList.toggle('on', i===tutIndex));
+}
+function goTut(i){
+  tutIndex = Math.max(0, Math.min(TUT_STEPS-1, i));
+  document.getElementById('tut-track').style.transform = `translateX(-${tutIndex*(100/TUT_STEPS)}%)`;
+  renderTutDots();
+  document.getElementById('tut-prev').disabled = tutIndex===0;
+  document.getElementById('tut-next').disabled = tutIndex===TUT_STEPS-1;
+}
+document.getElementById('tut-prev').addEventListener('click', ()=>goTut(tutIndex-1));
+document.getElementById('tut-next').addEventListener('click', ()=>goTut(tutIndex+1));
+document.getElementById('tut-skip').addEventListener('click', ()=>{
+  document.querySelector('.tab-btn[data-tab="practice"]').click();
+});
+// swipe
+(function(){
+  const track = document.getElementById('tut-track');
+  let startX=null;
+  track.addEventListener('pointerdown', e=>{ startX=e.clientX; });
+  track.addEventListener('pointerup', e=>{
+    if(startX===null) return;
+    const dx = e.clientX - startX;
+    if(Math.abs(dx)>40){ dx<0 ? goTut(tutIndex+1) : goTut(tutIndex-1); }
+    startX=null;
+  });
+})();
+renderTutDots(); goTut(0);
+
+/* ---- step 2: static demo board ---- */
+(function(){
+  const el = document.getElementById('step2-board');
+  el.style.gridTemplateColumns='repeat(2,1fr)';
+  el.style.width='min(34vh,220px)'; el.style.height='min(34vh,220px)';
+  ['T2','T1','T9','T7'].forEach(tid=>{
+    const c=document.createElement('div'); c.className='mini-cell';
+    c.innerHTML = renderTileSVG(tid,0,{showTag:false});
+    c.style.padding='2px';
+    el.appendChild(c);
+  });
+})();
+
+/* ---- step 3: sandbox (no scoring) ---- */
+(function(){
+  const boardEl = document.getElementById('step3-board');
+  const trayEl = document.getElementById('step3-tray');
+  const praise = document.getElementById('step3-praise');
+  boardEl.style.gridTemplateColumns='repeat(2,1fr)';
+  boardEl.style.width='min(30vh,190px)'; boardEl.style.height='min(30vh,190px)';
+  let sandbox = [null,null,null,null];
+  let picked = null;
+  let didPlace=false, didRotate=false;
+  function draw(){
+    boardEl.innerHTML='';
+    sandbox.forEach((cell,idx)=>{
+      const c=document.createElement('div'); c.className='mini-cell';
+      c.style.padding='2px';
+      if(cell){
+        const t=document.createElement('div'); t.className='tile'; t.style.position='relative';
+        t.style.transform=`rotate(${cell.rot}deg)`;
+        t.innerHTML = renderTileSVG(cell.tileId,0,{showTag:false});
+        t.addEventListener('click', ()=>{ cell.rot=(cell.rot+90)%360; didRotate=true; draw(); checkPraise(); });
+        c.appendChild(t);
+      } else {
+        c.addEventListener('click', ()=>{
+          if(picked!==null){ sandbox[idx]={tileId:picked, rot:0}; picked=null; didPlace=true; drawTray(); draw(); checkPraise(); }
+        });
+      }
+      boardEl.appendChild(c);
+    });
+  }
+  function drawTray(){
+    trayEl.innerHTML='';
+    ['T3','T4'].forEach(tid=>{
+      if(sandbox.some(s=>s && s.tileId===tid)) return;
+      const wrap=document.createElement('div');
+      wrap.style.width='min(9vh,56px)'; wrap.style.height='min(9vh,56px)';
+      wrap.style.cursor='pointer';
+      wrap.style.outline = picked===tid ? '3px solid var(--road-yellow)':'none';
+      wrap.innerHTML = renderTileSVG(tid,0,{showTag:false});
+      wrap.addEventListener('click', ()=>{ picked = (picked===tid)?null:tid; drawTray(); });
+      trayEl.appendChild(wrap);
+    });
+  }
+  function checkPraise(){
+    if(didPlace && didRotate) praise.classList.add('show');
+  }
+  draw(); drawTray();
+})();
+
+/* ---- step 4: arrow color demo ---- */
+(function(){
+  const arrow = document.getElementById('step4-arrow');
+  const caption = document.getElementById('step4-caption');
+  let toggle=0;
+  function paint(){
+    if(toggle===0){ arrow.style.color='#e0a300'; caption.textContent='노란 화살표 = 도로로만 이어야 해요!'; caption.style.color='#c98b00'; }
+    else { arrow.style.color='#1a8fbf'; caption.textContent='파란 화살표 = 수로로만 이어야 해요!'; caption.style.color='#1a8fbf'; }
+    toggle = 1-toggle;
+  }
+  paint();
+  setInterval(paint, 2200);
+})();
+
+/* ---- step 5: mini connect challenge (2 cells) ---- */
+(function(){
+  const el = document.getElementById('step5-board');
+  const praise = document.getElementById('step5-praise');
+  el.style.gridTemplateColumns='repeat(2,1fr)';
+  el.style.width='min(28vh,180px)'; el.style.height='min(14vh,90px)';
+  // fixed left tile: T2 rot0 (road top-right). Player controls right tile T3, must rotate to connect road on 'left' edge matching left tile's 'right' edge(road).
+  let rightRot = 90; // start unsolved
+  function leftHasRoadOnRight(){ return getEffectiveConnections('T2',0).some(c=>c.color==='road' && c.edges.includes('right')); }
+  function rightHasRoadOnLeft(){ return getEffectiveConnections('T3',rightRot).some(c=>c.color==='road' && c.edges.includes('left')); }
+  function draw(){
+    el.innerHTML='';
+    const c1=document.createElement('div'); c1.className='mini-cell'; c1.style.padding='2px';
+    c1.innerHTML = renderTileSVG('T2',0,{showTag:false});
+    el.appendChild(c1);
+    const c2=document.createElement('div'); c2.className='mini-cell'; c2.style.padding='2px';
+    const t2=document.createElement('div'); t2.className='tile'; t2.style.position='relative';
+    t2.style.transform=`rotate(${rightRot}deg)`;
+    t2.innerHTML = renderTileSVG('T3',0,{showTag:false});
+    t2.addEventListener('click', ()=>{ rightRot=(rightRot+90)%360; draw(); check(); });
+    c2.appendChild(t2);
+    el.appendChild(c2);
+  }
+  function check(){
+    if(leftHasRoadOnRight() && rightHasRoadOnLeft()){ praise.classList.add('show'); }
+    else { praise.classList.remove('show'); }
+  }
+  draw(); check();
+})();
+
+/* ---- step 6: near-solved mini 3x3 preview (visual only, simplified 2x2) ---- */
+(function(){
+  const el = document.getElementById('step6-board');
+  const praise = document.getElementById('step6-praise');
+  el.style.gridTemplateColumns='repeat(2,1fr)';
+  el.style.width='min(30vh,190px)'; el.style.height='min(30vh,190px)';
+  // two fixed correct tiles + one tile needing rotation
+  const layout = [
+    {tileId:'T2', rot:0, fixed:true},
+    {tileId:'T3', rot:0, fixed:true},   // needs to connect road with left cell -> already correct
+    {tileId:'T7', rot:90, fixed:false}, // player must rotate to 0 to connect road bottom-left / etc (simplified visual only)
+    {tileId:'T9', rot:0, fixed:true},
+  ];
+  function draw(){
+    el.innerHTML='';
+    layout.forEach(cell=>{
+      const c=document.createElement('div'); c.className='mini-cell'; c.style.padding='2px';
+      const t=document.createElement('div'); t.className='tile'; t.style.position='relative';
+      t.style.transform=`rotate(${cell.rot}deg)`;
+      t.innerHTML = renderTileSVG(cell.tileId,0,{showTag:false});
+      if(!cell.fixed){
+        t.addEventListener('click', ()=>{ cell.rot=(cell.rot+90)%360; draw(); check(); });
+      }
+      c.appendChild(t);
+      el.appendChild(c);
+    });
+  }
+  function check(){
+    const movable = layout[2];
+    if(movable.rot===0){ praise.classList.add('show'); } else { praise.classList.remove('show'); }
+  }
+  draw(); check();
+})();
+
+/* =========================================================
+   7. INIT PRACTICE
+========================================================= */
+newRound(PUZZLES[0]);
+
+})();
+</script>
+</body>
+</html>
